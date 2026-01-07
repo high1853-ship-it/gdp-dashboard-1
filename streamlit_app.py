@@ -1,151 +1,59 @@
 import streamlit as st
 import pandas as pd
-import math
-from pathlib import Path
+import datetime
 
-# Set the title and favicon that appear in the Browser's tab bar.
-st.set_page_config(
-    page_title='GDP dashboard',
-    page_icon=':earth_americas:', # This is an emoji shortcode. Could be a URL too.
-)
+# 設定網頁標題
+st.set_page_config(page_title="Ling 減脂紀錄", page_icon="🏃‍♀️")
 
-# -----------------------------------------------------------------------------
-# Declare some useful functions.
+st.title("🏃‍♀️ Ling 的數據追蹤中心")
 
-@st.cache_data
-def get_gdp_data():
-    """Grab GDP data from a CSV file.
+# --- 數據儲存邏輯 (簡單版) ---
+if 'fitness_data' not in st.session_state:
+    # 預設一筆你照片中的數據
+    st.session_state.fitness_data = pd.DataFrame({
+        "日期": ["2026-01-07"],
+        "時段": ["早晨"],
+        "體重": [68.6],
+        "體脂": [38.5],
+        "內臟脂肪": [11.0]
+    })
 
-    This uses caching to avoid having to read the file every time. If we were
-    reading from an HTTP endpoint instead of a file, it's a good idea to set
-    a maximum age to the cache with the TTL argument: @st.cache_data(ttl='1d')
-    """
+# --- 輸入區 ---
+with st.expander("➕ 新增今日紀錄"):
+    col1, col2 = st.columns(2)
+    with col1:
+        new_date = st.date_input("選擇日期", datetime.date.today())
+        new_time = st.selectbox("選擇時段", ["早晨", "晚間"])
+    with col2:
+        new_w = st.number_input("體重 (kg)", step=0.1, value=68.6)
+        new_f = st.number_input("體脂 (%)", step=0.1, value=38.5)
+        new_vf = st.number_input("內臟脂肪", step=0.5, value=11.0)
+    
+    if st.button("確認儲存"):
+        new_row = pd.DataFrame({"日期": [str(new_date)], "時段": [new_time], "體重": [new_w], "體脂": [new_f], "內臟脂肪": [new_vf]})
+        st.session_state.fitness_data = pd.concat([st.session_state.fitness_data, new_row], ignore_index=True)
+        st.success("紀錄成功！")
 
-    # Instead of a CSV on disk, you could read from an HTTP endpoint here too.
-    DATA_FILENAME = Path(__file__).parent/'data/gdp_data.csv'
-    raw_gdp_df = pd.read_csv(DATA_FILENAME)
+# --- 圖片上傳區 ---
+st.subheader("📷 上傳小米報告截圖")
+uploaded_file = st.file_uploader("拍下今日數據照片", type=["jpg", "png", "jpeg"])
+if uploaded_file:
+    st.image(uploaded_file, caption="今日紀錄存檔", use_container_width=True)
 
-    MIN_YEAR = 1960
-    MAX_YEAR = 2022
+# --- 圖表區 ---
+st.subheader("📈 體重變化趨勢")
+st.line_chart(st.session_state.fitness_data.set_index("日期")["體重"])
 
-    # The data above has columns like:
-    # - Country Name
-    # - Country Code
-    # - [Stuff I don't care about]
-    # - GDP for 1960
-    # - GDP for 1961
-    # - GDP for 1962
-    # - ...
-    # - GDP for 2022
-    #
-    # ...but I want this instead:
-    # - Country Name
-    # - Country Code
-    # - Year
-    # - GDP
-    #
-    # So let's pivot all those year-columns into two: Year and GDP
-    gdp_df = raw_gdp_df.melt(
-        ['Country Code'],
-        [str(x) for x in range(MIN_YEAR, MAX_YEAR + 1)],
-        'Year',
-        'GDP',
-    )
+st.subheader("📋 歷史數據表")
+st.dataframe(st.session_state.fitness_data, use_container_width=True)
 
-    # Convert years from string to integers
-    gdp_df['Year'] = pd.to_numeric(gdp_df['Year'])
+# --- AI 自動反饋 (根據你照片的數值) ---
+st.divider()
+last_weight = st.session_state.fitness_data["體重"].iloc[-1]
+last_vf = st.session_state.fitness_data["內臟脂肪"].iloc[-1]
 
-    return gdp_df
-
-gdp_df = get_gdp_data()
-
-# -----------------------------------------------------------------------------
-# Draw the actual page
-
-# Set the title that appears at the top of the page.
-'''
-# :earth_americas: GDP dashboard
-
-Browse GDP data from the [World Bank Open Data](https://data.worldbank.org/) website. As you'll
-notice, the data only goes to 2022 right now, and datapoints for certain years are often missing.
-But it's otherwise a great (and did I mention _free_?) source of data.
-'''
-
-# Add some spacing
-''
-''
-
-min_value = gdp_df['Year'].min()
-max_value = gdp_df['Year'].max()
-
-from_year, to_year = st.slider(
-    'Which years are you interested in?',
-    min_value=min_value,
-    max_value=max_value,
-    value=[min_value, max_value])
-
-countries = gdp_df['Country Code'].unique()
-
-if not len(countries):
-    st.warning("Select at least one country")
-
-selected_countries = st.multiselect(
-    'Which countries would you like to view?',
-    countries,
-    ['DEU', 'FRA', 'GBR', 'BRA', 'MEX', 'JPN'])
-
-''
-''
-''
-
-# Filter the data
-filtered_gdp_df = gdp_df[
-    (gdp_df['Country Code'].isin(selected_countries))
-    & (gdp_df['Year'] <= to_year)
-    & (from_year <= gdp_df['Year'])
-]
-
-st.header('GDP over time', divider='gray')
-
-''
-
-st.line_chart(
-    filtered_gdp_df,
-    x='Year',
-    y='GDP',
-    color='Country Code',
-)
-
-''
-''
-
-
-first_year = gdp_df[gdp_df['Year'] == from_year]
-last_year = gdp_df[gdp_df['Year'] == to_year]
-
-st.header(f'GDP in {to_year}', divider='gray')
-
-''
-
-cols = st.columns(4)
-
-for i, country in enumerate(selected_countries):
-    col = cols[i % len(cols)]
-
-    with col:
-        first_gdp = first_year[first_year['Country Code'] == country]['GDP'].iat[0] / 1000000000
-        last_gdp = last_year[last_year['Country Code'] == country]['GDP'].iat[0] / 1000000000
-
-        if math.isnan(first_gdp):
-            growth = 'n/a'
-            delta_color = 'off'
-        else:
-            growth = f'{last_gdp / first_gdp:,.2f}x'
-            delta_color = 'normal'
-
-        st.metric(
-            label=f'{country} GDP',
-            value=f'{last_gdp:,.0f}B',
-            delta=growth,
-            delta_color=delta_color
-        )
+st.subheader("🤖 AI 健康導師建議")
+if last_vf >= 10:
+    st.error(f"⚠️ 當前內臟脂肪為 {last_vf}，屬於「極高」等級。建議減少攝取含糖飲料與油炸物，增加每天 20 分鐘的有氧運動。")
+else:
+    st.success("✅ 內臟脂肪控制在標準範圍，請繼續保持！")
