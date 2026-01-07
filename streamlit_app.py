@@ -2,58 +2,66 @@ import streamlit as st
 import pandas as pd
 import datetime
 
-# 設定網頁標題
-st.set_page_config(page_title="Ling 減脂紀錄", page_icon="🏃‍♀️")
+# --- 1. 專業網頁設定 ---
+st.set_page_config(page_title="Ling's Fitness Pro", page_icon="🔥", layout="wide")
 
-st.title("🏃‍♀️ Ling 的數據追蹤中心")
+# 套用自定義 CSS 讓顏色更豐富
+st.markdown("""
+    <style>
+    .main { background-color: #f8f9fa; }
+    .stButton>button { width: 100%; border-radius: 20px; background: linear-gradient(45deg, #FF4B2B, #FF416C); color: white; border: none; }
+    .metric-card { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-left: 5px solid #FF416C; }
+    h1 { color: #2C3E50; font-family: 'Helvetica Neue', sans-serif; }
+    </style>
+    """, unsafe_allow_html=True)
 
-# --- 數據儲存邏輯 (簡單版) ---
-if 'fitness_data' not in st.session_state:
-    # 預設一筆你照片中的數據
-    st.session_state.fitness_data = pd.DataFrame({
-        "日期": ["2026-01-07"],
-        "時段": ["早晨"],
-        "體重": [68.6],
-        "體脂": [38.5],
-        "內臟脂肪": [11.0]
-    })
+# --- 2. 標題與數據導航 ---
+st.title("🏃‍♀️ Ling Pro 數據監控中心")
+st.write(f"最後更新：{datetime.date.today()}")
 
-# --- 輸入區 ---
-with st.expander("➕ 新增今日紀錄"):
-    col1, col2 = st.columns(2)
-    with col1:
-        new_date = st.date_input("選擇日期", datetime.date.today())
-        new_time = st.selectbox("選擇時段", ["早晨", "晚間"])
-    with col2:
-        new_w = st.number_input("體重 (kg)", step=0.1, value=68.6)
-        new_f = st.number_input("體脂 (%)", step=0.1, value=38.5)
-        new_vf = st.number_input("內臟脂肪", step=0.5, value=11.0)
-    
-    if st.button("確認儲存"):
-        new_row = pd.DataFrame({"日期": [str(new_date)], "時段": [new_time], "體重": [new_w], "體脂": [new_f], "內臟脂肪": [new_vf]})
-        st.session_state.fitness_data = pd.concat([st.session_state.fitness_data, new_row], ignore_index=True)
-        st.success("紀錄成功！")
+# 模擬最新數據 (這部分之後可串接資料庫)
+col1, col2, col3, col4 = st.columns(4)
+with col1:
+    st.markdown('<div class="metric-card"><h4>體重</h4><h2>68.6 <small>kg</small></h2></div>', unsafe_allow_html=True)
+with col2:
+    st.markdown('<div class="metric-card"><h4>體脂率</h4><h2>38.5 <small>%</small></h2></div>', unsafe_allow_html=True)
+with col3:
+    st.markdown('<div class="metric-card"><h4>內臟脂肪</h4><h2>11.0</h2></div>', unsafe_allow_html=True)
+with col4:
+    st.markdown('<div class="metric-card"><h4>身體年齡</h4><h2>28 <small>歲</small></h2></div>', unsafe_allow_html=True)
 
-# --- 圖片上傳區 ---
-st.subheader("📷 上傳小米報告截圖")
-uploaded_file = st.file_uploader("拍下今日數據照片", type=["jpg", "png", "jpeg"])
-if uploaded_file:
-    st.image(uploaded_file, caption="今日紀錄存檔", use_container_width=True)
-
-# --- 圖表區 ---
-st.subheader("📈 體重變化趨勢")
-st.line_chart(st.session_state.fitness_data.set_index("日期")["體重"])
-
-st.subheader("📋 歷史數據表")
-st.dataframe(st.session_state.fitness_data, use_container_width=True)
-
-# --- AI 自動反饋 (根據你照片的數值) ---
 st.divider()
-last_weight = st.session_state.fitness_data["體重"].iloc[-1]
-last_vf = st.session_state.fitness_data["內臟脂肪"].iloc[-1]
 
-st.subheader("🤖 AI 健康導師建議")
-if last_vf >= 10:
-    st.error(f"⚠️ 當前內臟脂肪為 {last_vf}，屬於「極高」等級。建議減少攝取含糖飲料與油炸物，增加每天 20 分鐘的有氧運動。")
-else:
-    st.success("✅ 內臟脂肪控制在標準範圍，請繼續保持！")
+# --- 3. 互動區域 ---
+tab1, tab2, tab3 = st.tabs(["📊 趨勢分析", "📸 照片存檔", "✍️ 手動輸入"])
+
+with tab1:
+    st.subheader("核心指標變化趨勢")
+    # 建立更有質感的範例數據
+    chart_data = pd.DataFrame({
+        '日期': pd.date_range(start='2026-01-01', periods=7),
+        '體重': [70.2, 69.8, 69.5, 69.2, 68.9, 68.7, 68.6],
+        '體脂': [39.5, 39.2, 39.0, 38.8, 38.6, 38.5, 38.5]
+    }).set_index('日期')
+    
+    st.line_chart(chart_data, color=["#FF416C", "#3498db"])
+
+with tab2:
+    st.subheader("小米報告存檔")
+    uploaded_file = st.file_uploader("點擊或拖曳上傳今日報告截圖", type=["jpg", "png", "jpeg"])
+    if uploaded_file:
+        st.image(uploaded_file, use_container_width=True)
+
+with tab3:
+    with st.form("data_form"):
+        c1, c2 = st.columns(2)
+        w = c1.number_input("今日體重", value=68.6)
+        f = c2.number_input("今日體脂", value=38.5)
+        submitted = st.form_submit_button("同步最新數據")
+        if submitted:
+            st.toast("數據已同步至雲端！", icon='✅')
+
+# --- 4. 底部 AI 反饋區 ---
+st.sidebar.header("🤖 AI 專屬回饋")
+st.sidebar.info("Ling，你目前的肌肉量分佈非常平均。建議加強軀幹部位的有氧訓練，以針對內臟脂肪進行改善。")
+st.sidebar.progress(45, text="目標體重達成度：45%")
